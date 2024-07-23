@@ -28,7 +28,7 @@ class TelegramController extends Controller
 
         $apiBot = new Api(env('TELEGRAM_BOT_TOKEN'));
         $ownerId = env('BOT_OWNER_ID');
-        $products = Product::all();
+        // $products = Product::all();
         $messages = Message::all();
 
         // Обработка команды /start
@@ -74,112 +74,112 @@ class TelegramController extends Controller
             
         });
 
-        $bot->onCommand('products', function (Nutgram $bot) use (&$products) {
-            $chat_id = $bot->message()->from->id;
+        // $bot->onCommand('products', function (Nutgram $bot) use (&$products) {
+        //     $chat_id = $bot->message()->from->id;
 
-            if ($products->isEmpty()) {
-                $bot->sendMessage(
-                    text: 'Products are out of stock',
-                    chat_id: $chat_id
-                );
-                return;
-            }
+        //     if ($products->isEmpty()) {
+        //         $bot->sendMessage(
+        //             text: 'Products are out of stock',
+        //             chat_id: $chat_id
+        //         );
+        //         return;
+        //     }
 
-            foreach ($products as $product) {
-                $response = "Name: " . $product->title . "\n";
-                $response .= "Description: " . $product->description . "\n";
-                $response .= "Price: " . ($product->price / 100 * 100) . ' RUB';
-                $callback_data = "type:{$product->id}";
+        //     foreach ($products as $product) {
+        //         $response = "Name: " . $product->title . "\n";
+        //         $response .= "Description: " . $product->description . "\n";
+        //         $response .= "Price: " . ($product->price / 100 * 100) . ' RUB';
+        //         $callback_data = "type:{$product->id}";
                 
-                $keyboard = InlineKeyboardMarkup::make();
-                $keyboard->addRow(
-                    InlineKeyboardButton::make('Buy', callback_data: $callback_data)
-                );
+        //         $keyboard = InlineKeyboardMarkup::make();
+        //         $keyboard->addRow(
+        //             InlineKeyboardButton::make('Buy', callback_data: $callback_data)
+        //         );
 
-                $bot->sendMessage(
-                    text: $response,
-                    chat_id: $chat_id,
-                    reply_markup: $keyboard
-                );
-            }
-        });
+        //         $bot->sendMessage(
+        //             text: $response,
+        //             chat_id: $chat_id,
+        //             reply_markup: $keyboard
+        //         );
+        //     }
+        // });
 
-        // Обработка callback запроса при нажатии кнопки "Buy"
-        $bot->onCallbackQueryData('type:{id}', function (Nutgram $bot) use (&$products, &$apiBot) {
-            $callbackData = $bot->callbackQuery()->data;
-            $productId = explode(':', $callbackData)[1];
+        // // Обработка callback запроса при нажатии кнопки "Buy"
+        // $bot->onCallbackQueryData('type:{id}', function (Nutgram $bot) use (&$products, &$apiBot) {
+        //     $callbackData = $bot->callbackQuery()->data;
+        //     $productId = explode(':', $callbackData)[1];
 
-            $product = $products->firstWhere('id', $productId);
+        //     $product = $products->firstWhere('id', $productId);
             
-            if (!$product) {
-                $bot->sendMessage(
-                    text: 'Product not found',
-                    chat_id: $bot->callbackQuery()->from->id
-                );
-                return;
-            }
+        //     if (!$product) {
+        //         $bot->sendMessage(
+        //             text: 'Product not found',
+        //             chat_id: $bot->callbackQuery()->from->id
+        //         );
+        //         return;
+        //     }
 
-            $chat_id = $bot->callbackQuery()->from->id;
+        //     $chat_id = $bot->callbackQuery()->from->id;
 
-            $apiBot->sendInvoice([
-                'chat_id' => $chat_id,
-                'title' => "Buy the " . $product->title,
-                'description' => 'To pay:',
-                'payload' => 'invoice_payload_' . $productId,
-                'provider_token' => env('PROVIDER_TOKEN'),
-                'currency' => 'RUB',
-                'prices' => [
-                    new LabeledPrice(label: 'Content Access', amount: $product->price * 100)
-                ]
-            ]);
+        //     $apiBot->sendInvoice([
+        //         'chat_id' => $chat_id,
+        //         'title' => "Buy the " . $product->title,
+        //         'description' => 'To pay:',
+        //         'payload' => 'invoice_payload_' . $productId,
+        //         'provider_token' => env('PROVIDER_TOKEN'),
+        //         'currency' => 'RUB',
+        //         'prices' => [
+        //             new LabeledPrice(label: 'Content Access', amount: $product->price * 100)
+        //         ]
+        //     ]);
 
-            $bot->answerCallbackQuery(
-                text: 'Processing your request...',
-                show_alert: false
-            );
-        });
+        //     $bot->answerCallbackQuery(
+        //         text: 'Processing your request...',
+        //         show_alert: false
+        //     );
+        // });
 
-        // Обработка команды /edit
-        $bot->onCommand('edit', function (Nutgram $bot) use (&$products, &$messages) {
-            $chatId = $bot->message()->chat->id;
+        // // Обработка команды /edit
+        // $bot->onCommand('edit', function (Nutgram $bot) use (&$products, &$messages) {
+        //     $chatId = $bot->message()->chat->id;
     
-            foreach ($products as $product) {
-                $response = "Product Name: " . $product->title . "\n";
-                $response .= "Description: " . $product->description . "\n";
-                $response .= "Price: " . ($product->price / 100 * 100) . ' RUB';
-                $callbackDataProduct = "edit_product:{$product->id}";
+        //     foreach ($products as $product) {
+        //         $response = "Product Name: " . $product->title . "\n";
+        //         $response .= "Description: " . $product->description . "\n";
+        //         $response .= "Price: " . ($product->price / 100 * 100) . ' RUB';
+        //         $callbackDataProduct = "edit_product:{$product->id}";
                 
-                $keyboard = InlineKeyboardMarkup::make();
-                $keyboard->addRow(
-                    InlineKeyboardButton::make('Edit Product', callback_data: $callbackDataProduct)
-                );
+        //         $keyboard = InlineKeyboardMarkup::make();
+        //         $keyboard->addRow(
+        //             InlineKeyboardButton::make('Edit Product', callback_data: $callbackDataProduct)
+        //         );
 
-                $bot->sendMessage(
-                    chat_id: $chatId,
-                    text: $response,
-                    reply_markup: $keyboard
-                );
-            }
+        //         $bot->sendMessage(
+        //             chat_id: $chatId,
+        //             text: $response,
+        //             reply_markup: $keyboard
+        //         );
+        //     }
 
-            foreach ($messages as $message) {
-                $response = "Message ID: " . $message->id . "\n";
-                $response .= "Title: " . $message->title . "\n";
-                $response .= "Description: " . $message->description;
-                $callbackDataMessage = "edit_message:{$message->id}";
+        //     foreach ($messages as $message) {
+        //         $response = "Message ID: " . $message->id . "\n";
+        //         $response .= "Title: " . $message->title . "\n";
+        //         $response .= "Description: " . $message->description;
+        //         $callbackDataMessage = "edit_message:{$message->id}";
                 
-                $keyboard = InlineKeyboardMarkup::make();
-                $keyboard->addRow(
-                    InlineKeyboardButton::make('Edit Message', callback_data: $callbackDataMessage)
-                );
+        //         $keyboard = InlineKeyboardMarkup::make();
+        //         $keyboard->addRow(
+        //             InlineKeyboardButton::make('Edit Message', callback_data: $callbackDataMessage)
+        //         );
 
-                $bot->sendMessage(
-                    chat_id: $chatId,
-                    text: $response,
-                    reply_markup: $keyboard
-                );
-            }
+        //         $bot->sendMessage(
+        //             chat_id: $chatId,
+        //             text: $response,
+        //             reply_markup: $keyboard
+        //         );
+        //     }
             
-        });
+        // });
 
         // // Обработка callback-запросов для редактирования
         // $bot->onCallbackQuery(function (Nutgram $bot) {
