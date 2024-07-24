@@ -19,12 +19,12 @@ class TelegramController extends Controller
         \Log::info('Webhook received');
 
         $apiBot = new Api(env('TELEGRAM_BOT_TOKEN'));
-        // $ownerId = env('BOT_OWNER_ID');
+        $ownerIds = explode(',', env('BOT_OWNER_ID'));
         $products = Product::all();
         $messages = Message::all();
 
         // Обработка команды /start
-        $bot->onCommand('start', function (Nutgram $bot) use (&$ownerId, &$messages) {
+        $bot->onCommand('start', function (Nutgram $bot) use (&$ownerId, &$messages, &$ownerIds) {
             $message = $messages->first();
             $chat_id = $bot->message()->from->id;
 
@@ -70,9 +70,8 @@ class TelegramController extends Controller
                 );
             }
 
-            $ownerId = $chat_id; // на время 
             // Дополнительные команды для владельца бота
-            if ($chat_id == $ownerId) {
+            if (in_array($chat_id, $ownerIds)) {
                 $commands = "There is an additional command for owner:\n";
                 $commands .= "/edit - Edit messages or products\n";
                 $bot->sendMessage(
@@ -201,48 +200,60 @@ class TelegramController extends Controller
             }
         });
 
-        // Обработка коллбек-запросов при нажатии кнопки "Edit"
+        // // Обработка коллбек-запросов при нажатии кнопки "Edit"
         $bot->onCallbackQuery(function (Nutgram $bot) {
             $callbackData = $bot->callbackQuery()->data;
             $chat_id = $bot->callbackQuery()->from->id;
+            
+            \Log::info("Callback Data: " . $callbackData);
 
             $bot->answerCallbackQuery(
                 text: 'Processing your request...',
                 show_alert: false
             );
 
-            if (strpos($callbackData, 'edit_product:') === 0) {
+            if (strpos($callbackData, 'edit_product:') === 0) {  // Исправлено условие на === 0
                 $productId = str_replace('edit_product:', '', $callbackData);
-                $bot->sendMessage(chat_id: $chat_id, text: "Please enter new data for the product in the format: id,title,description,price");
+                $bot->setGlobalData("edit_message_id", null);  // Сбросить значение edit_message_id
+                \Log::info("Setting edit_product_id to " . $productId);
                 $bot->setGlobalData("edit_product_id", $productId);
-
-            } elseif (strpos($callbackData, 'edit_message:') === 0) {
+                $bot->sendMessage(chat_id: $chat_id, text: "Please enter new data for the product in the format: id,title,description,price");
+            } 
+            elseif (strpos($callbackData, 'edit_message:') === 0) {  // Исправлено условие на === 0
                 $messageId = str_replace('edit_message:', '', $callbackData);
-                $bot->sendMessage(chat_id: $chat_id, text: "Please enter new data for the message in the format: id,title,content,buttons(in the format as written above)");
+                $bot->setGlobalData("edit_product_id", null);  // Сбросить значение edit_product_id
+                \Log::info("Setting edit_message_id to " . $messageId);
                 $bot->setGlobalData("edit_message_id", $messageId);
-
+                $bot->sendMessage(chat_id: $chat_id, text: "Please enter new data for the message in the format: id,title,content,buttons(in the format as written above)");
             }
         });
-        
+
         // Обновление базы данных
-        $bot->onMessage(function (Nutgram $bot) use (&$messages, &$products) {
+        $bot->onMessage(function (Nutgram $bot) use (&$messages, &$products) {            
             $chat_id = $bot->message()->chat->id;
             $text = $bot->message()->text;
-        
+            
             $editMessageId = $bot->getGlobalData("edit_message_id");
+            $editProductId = $bot->getGlobalData("edit_product_id");
+
+            \Log::info("Received message: " . $text);
+            \Log::info("Edit Message ID: " . $editMessageId);
+            \Log::info("Edit Product ID: " . $editProductId);
+
+            // Логика обновления сообщения
             if ($editMessageId) {
-                $parts = explode(',', $text, 4); // пока на 4 части
-        
+                $parts = explode(',', $text, 4); // Разделяем на 4 части
+
                 if (count($parts) < 4) {
-                    $bot->sendMessage(chat_id: $chat_id, text: "Incorrect format. Please enter the data as id,title,description,text1,url1,text2,url2,...");
+                    $bot->sendMessage(chat_id: $chat_id, text: "Incorrect format. Please enter the data as id,title,description,buttons(in JSON format).");
                     return;
                 }
-        
+
                 $id = $parts[0];
                 $title = $parts[1];
                 $description = $parts[2];
                 $buttons_raw = $parts[3];
-        
+
                 $buttons = [];
                 preg_match_all('/\{[^\}]+\}/', $buttons_raw, $matches);
                 foreach ($matches[0] as $match) {
@@ -269,7 +280,7 @@ class TelegramController extends Controller
                 $bot->setGlobalData("edit_message_id", null);  
             }
 
-            $editProductId = $bot->getGlobalData("edit_product_id");
+            // Логика обновления продукта
             if ($editProductId) {
                 list($id, $title, $description, $price) = explode(',', $text);
 
@@ -286,31 +297,9 @@ class TelegramController extends Controller
 
                 $bot->setGlobalData("edit_product_id", null); 
             }
-
-            foreach ($products as $product) {
-                $response = "Name: " . $product->title . "\n";
-                $response .= "Description: " . $product->description . "\n";
-                $response .= "Price: " . ($product->price / 100 * 100) . ' RUB';
-                
-                $bot->sendMessage(
-                    text: $response,
-                    chat_id: $chat_id,
-                );
-            }
-            foreach ($messages as $message) {
-                $response = $message->title . "\n";
-                $response .= $message->content . "\n";
-                $response = $message->buttons . "\n";
-                
-                $bot->sendMessage(
-                    text: $response,
-                    chat_id: $chat_id,
-                );
-            }
-
         });
-        
 
+        
         $bot->run();
     }
 }
