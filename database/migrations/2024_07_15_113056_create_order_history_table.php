@@ -19,7 +19,7 @@ return new class extends Migration
             $table->decimal('price', 18, 3)->nullable();
             $table->integer('product_id');
             $table->string('external_transaction_id', 255)->nullable();
-            $table->timestamps();
+            // $table->timestamps();
         });
     }
 

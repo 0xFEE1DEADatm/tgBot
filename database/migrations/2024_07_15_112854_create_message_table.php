@@ -12,12 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('message', function (Blueprint $table) {
-            $table->id();
+            $table->id('id');
             $table->binary('image')->nullable();
             $table->string('title', 255);
             $table->text('description');
             $table->text('buttons_json');
-            $table->timestamps();
         });
     }
 

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->bigInteger('telegram_id')->unique();
             $table->string('customer_name', 255);
-            $table->timestamps();
+            // $table->timestamps();
         });
     }
 
