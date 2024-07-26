@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('order_history', function (Blueprint $table) {
+        Schema::create('order_histories', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('customer_id')->nullable();
             $table->timestamp('order_date');
@@ -19,7 +19,7 @@ return new class extends Migration
             $table->decimal('price', 18, 3)->nullable();
             $table->integer('product_id');
             $table->string('external_transaction_id', 255)->nullable();
-            // $table->timestamps();
+            $table->timestamps();
         });
     }
 
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('order_history');
+        Schema::dropIfExists('order_histories');
     }
 };
