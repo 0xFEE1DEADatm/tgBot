@@ -30,10 +30,11 @@ class TelegramController extends Controller
 
             $response = $message->title . "\n";
             $response .= $message->description . "\n";
+            $image_data = $message->image ? base64_decode($message->image) : null;
 
             if ($message->buttons_json) {
                 $buttons = json_decode($message->buttons_json, true);
-        
+
                 if (json_last_error() !== JSON_ERROR_NONE) {
                     $bot->sendMessage(
                         text: "There was an error decoding the buttons JSON.",
@@ -51,23 +52,50 @@ class TelegramController extends Controller
                             );
                         }
                     }
-                    $bot->sendMessage(
-                        text: $response,
+
+                    if ($image_data) {
+                        $bot->sendPhoto(
+                            chat_id: $chat_id,
+                            photo: $image_data,
+                            caption: $response,
+                            reply_markup: $keyboard
+                        );
+                    } else {
+                        $bot->sendMessage(
+                            text: $response,
+                            chat_id: $chat_id,
+                            reply_markup: $keyboard
+                        );
+                    }
+                } else {
+                    if ($image_data) {
+                        $bot->sendPhoto(
+                            chat_id: $chat_id,
+                            photo: $image_data,
+                            caption: $response,
+                            reply_markup: null
+                        );
+                    } else {
+                        $bot->sendMessage(
+                            text: $response,
+                            chat_id: $chat_id,
+                            reply_markup: null
+                        );
+                    }
+                }
+            } else {
+                if ($image_data) {
+                    $bot->sendPhoto(
                         chat_id: $chat_id,
-                        reply_markup: $keyboard
+                        photo: $image_data,
+                        caption: $response
                     );
                 } else {
                     $bot->sendMessage(
                         text: $response,
-                        chat_id: $chat_id,
-                        reply_markup: null
+                        chat_id: $chat_id
                     );
                 }
-            } else {
-                $bot->sendMessage(
-                    text: $response,
-                    chat_id: $chat_id
-                );
             }
 
             // Дополнительные команды для владельца бота
@@ -80,6 +108,7 @@ class TelegramController extends Controller
                 );
             }
         });
+
 
         // Обработка команды /products
         $bot->onCommand('products', function (Nutgram $bot) use (&$products) {
@@ -152,14 +181,16 @@ class TelegramController extends Controller
             $chat_id = $bot->message()->chat->id;
 
             foreach ($products as $product) {
-                $response = "Product Name: ".$product->title."\n";
-                $response .= "Description: ".$product->description."\n";
-                $response .= "Price: ".($product->price / 100 * 100).' RUB';
-                $callback_data_product = "edit_product:{$product->id}";
+                $response = "Product Name: " . $product->title . "\n";
+                $response .= "Description: " . $product->description . "\n";
+                $response .= "Price: " . ($product->price / 100 * 100) . ' RUB';
+                $callback_data_edit_product = "edit_product:{$product->id}";
+                $callback_data_delete_product = "delete_product:{$product->id}";
 
                 $keyboard = InlineKeyboardMarkup::make();
                 $keyboard->addRow(
-                    InlineKeyboardButton::make('Edit Product', callback_data: $callback_data_product)
+                    InlineKeyboardButton::make(text: 'Edit', callback_data: $callback_data_edit_product),
+                    InlineKeyboardButton::make(text: 'Delete', callback_data: $callback_data_delete_product)
                 );
 
                 $bot->sendMessage(
@@ -169,26 +200,38 @@ class TelegramController extends Controller
                 );
             }
 
+            $callback_data_add_product = "add_product";
+            $keyboard_add = InlineKeyboardMarkup::make();
+            $keyboard_add->addRow(
+                InlineKeyboardButton::make(text: 'Add', callback_data: $callback_data_add_product)
+            );
+
+            $bot->sendMessage(
+                chat_id: $chat_id,
+                text: "Would you like to add a new product?",
+                reply_markup: $keyboard_add
+            );
+
             foreach ($messages as $message) {
-                $response = "Title: ".$message->title."\n";
-                $response .= "Description: ".$message->description."\n";
-                $response .= "Buttons: ".$message->buttons_json;
-        
+                $response = "Title: " . $message->title . "\n";
+                $response .= "Description: " . $message->description . "\n";
+                $response .= "Buttons: " . $message->buttons_json;
+
                 $callback_data_message = "edit_message:{$message->id}";
-        
+
                 $keyboard = InlineKeyboardMarkup::make();
                 $keyboard->addRow(
-                    InlineKeyboardButton::make('Edit Message', callback_data: $callback_data_message)
+                    InlineKeyboardButton::make(text: 'Edit', callback_data: $callback_data_message)
                 );
-        
-                if ($message->buttons_json) {        
+
+                if ($message->buttons_json) {
                     if (json_last_error() !== JSON_ERROR_NONE) {
                         $bot->sendMessage(
                             text: "There was an error decoding the buttons JSON.",
                             chat_id: $chat_id
                         );
                         return;
-                    }          
+                    }
                 }
 
                 $bot->sendMessage(
@@ -196,15 +239,14 @@ class TelegramController extends Controller
                     text: $response,
                     reply_markup: $keyboard
                 );
-                
             }
         });
 
-        // // Обработка коллбек-запросов при нажатии кнопки "Edit"
+        // Обработка коллбек-запросов при нажатии кнопок "Edit" и "Delete"
         $bot->onCallbackQuery(function (Nutgram $bot) {
             $callbackData = $bot->callbackQuery()->data;
             $chat_id = $bot->callbackQuery()->from->id;
-            
+
             \Log::info("Callback Data: " . $callbackData);
 
             $bot->answerCallbackQuery(
@@ -212,16 +254,24 @@ class TelegramController extends Controller
                 show_alert: false
             );
 
-            if (strpos($callbackData, 'edit_product:') === 0) {  // Исправлено условие на === 0
+            if (strpos($callbackData, 'edit_product:') === 0) {
                 $productId = str_replace('edit_product:', '', $callbackData);
-                $bot->setGlobalData("edit_message_id", null);  // Сбросить значение edit_message_id
+                $bot->setGlobalData("edit_message_id", null);
                 \Log::info("Setting edit_product_id to " . $productId);
                 $bot->setGlobalData("edit_product_id", $productId);
                 $bot->sendMessage(chat_id: $chat_id, text: "Please enter new data for the product in the format: id,title,description,price");
-            } 
-            elseif (strpos($callbackData, 'edit_message:') === 0) {  // Исправлено условие на === 0
+            } elseif (strpos($callbackData, 'delete_product:') === 0) {
+                $productId = str_replace('delete_product:', '', $callbackData);
+                \Log::info("Deleting product with id " . $productId);
+                Product::destroy($productId);
+                $bot->sendMessage(chat_id: $chat_id, text: "Product deleted successfully!");
+            } elseif ($callbackData === 'add_product') {
+                $bot->setGlobalData("edit_product_id", null);
+                \Log::info("Adding new product");
+                $bot->sendMessage(chat_id: $chat_id, text: "Please enter new product data in the format: id,title,description,price");
+            } elseif (strpos($callbackData, 'edit_message:') === 0) {
                 $messageId = str_replace('edit_message:', '', $callbackData);
-                $bot->setGlobalData("edit_product_id", null);  // Сбросить значение edit_product_id
+                $bot->setGlobalData("edit_product_id", null);
                 \Log::info("Setting edit_message_id to " . $messageId);
                 $bot->setGlobalData("edit_message_id", $messageId);
                 $bot->sendMessage(chat_id: $chat_id, text: "Please enter new data for the message in the format: id,title,content,buttons(in the format as written above)");
@@ -229,10 +279,10 @@ class TelegramController extends Controller
         });
 
         // Обновление базы данных
-        $bot->onMessage(function (Nutgram $bot) use (&$messages, &$products) {            
+        $bot->onMessage(function (Nutgram $bot) use (&$messages, &$products) {
             $chat_id = $bot->message()->chat->id;
             $text = $bot->message()->text;
-            
+
             $editMessageId = $bot->getGlobalData("edit_message_id");
             $editProductId = $bot->getGlobalData("edit_product_id");
 
@@ -240,7 +290,7 @@ class TelegramController extends Controller
             \Log::info("Edit Message ID: " . $editMessageId);
             \Log::info("Edit Product ID: " . $editProductId);
 
-            // Логика обновления сообщения
+            // messages
             if ($editMessageId) {
                 $parts = explode(',', $text, 4); // Разделяем на 4 части
 
@@ -277,10 +327,10 @@ class TelegramController extends Controller
                 } else {
                     $bot->sendMessage(chat_id: $chat_id, text: "Message not found.");
                 }
-                $bot->setGlobalData("edit_message_id", null);  
+                $bot->setGlobalData("edit_message_id", null);
             }
 
-            // Логика обновления продукта
+            // products
             if ($editProductId) {
                 list($id, $title, $description, $price) = explode(',', $text);
 
@@ -295,7 +345,18 @@ class TelegramController extends Controller
                     $bot->sendMessage(chat_id: $chat_id, text: "Product not found.");
                 }
 
-                $bot->setGlobalData("edit_product_id", null); 
+                $bot->setGlobalData("edit_product_id", null);
+            } else {
+                list($id, $title, $description, $price) = explode(',', $text);
+
+                // Создание нового продукта
+                $product = new Product();
+                $product->id = $id;
+                $product->title = $title;
+                $product->description = $description;
+                $product->price = $price;
+                $product->save();
+                $bot->sendMessage(chat_id: $chat_id, text: "New product added successfully!");
             }
         });
 
