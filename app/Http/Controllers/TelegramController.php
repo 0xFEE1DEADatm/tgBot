@@ -33,7 +33,8 @@ class TelegramController extends Controller
             $image_data = $message->image ? base64_decode($message->image) : null;
 
             if ($message->buttons_json) {
-                $buttons = json_decode($message->buttons_json, true);
+                // $buttons = json_decode($message->buttons_json, true);
+                $buttons = $message->buttons_json;
 
                 if (json_last_error() !== JSON_ERROR_NONE) {
                     $bot->sendMessage(

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->binary('image')->nullable();
             $table->string('title', 255);
             $table->text('description');
-            $table->text('buttons_json');
+            $table->json('buttons_json');
             $table->timestamps();
         });
     }
