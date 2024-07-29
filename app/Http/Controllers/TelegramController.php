@@ -12,11 +12,11 @@ use SergiX44\Nutgram\Telegram\Types\Payment\LabeledPrice;
 use App\Models\Product;
 use App\Models\Message;
 
-Message::create([
-    'id' => '1',
-    'title' => 'Welcome Message',
-    'description' => 'Welcome to our service!',
-    'buttons_json' => '[{"text":"First","url":"https://www.nytimes.com/2021/09/07/science/cat-stripes-genetics.html"},{"text":"Second","url":"https://www.nytimes.com/2024/07/24/us/politics/netanyahu-congress-democrats.html"}];']);
+// Message::create([
+//     'id' => '1',
+//     'title' => 'Welcome Message',
+//     'description' => 'Welcome to our service!',
+//     'buttons_json' => '[{"text":"First","url":"https://www.nytimes.com/2021/09/07/science/cat-stripes-genetics.html"},{"text":"Second","url":"https://www.nytimes.com/2024/07/24/us/politics/netanyahu-congress-democrats.html"}];']);
 
 class TelegramController extends Controller
 {
