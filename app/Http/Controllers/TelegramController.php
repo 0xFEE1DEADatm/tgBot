@@ -12,12 +12,6 @@ use SergiX44\Nutgram\Telegram\Types\Payment\LabeledPrice;
 use App\Models\Product;
 use App\Models\Message;
 
-// Message::create([
-//     'id' => '1',
-//     'title' => 'Welcome Message',
-//     'description' => 'Welcome to our service!',
-//     'buttons_json' => '[{"text":"First","url":"https://www.nytimes.com/2021/09/07/science/cat-stripes-genetics.html"},{"text":"Second","url":"https://www.nytimes.com/2024/07/24/us/politics/netanyahu-congress-democrats.html"}];']);
-
 class TelegramController extends Controller
 {
     public function index(Request $request, Nutgram $bot)
@@ -41,13 +35,13 @@ class TelegramController extends Controller
             if ($message->buttons_json) {
                 $buttons = json_decode($message->buttons_json, true);
 
-                // if (json_last_error() !== JSON_ERROR_NONE) {
-                //     $bot->sendMessage(
-                //         text: "There was an error decoding the buttons JSON.",
-                //         chat_id: $chat_id
-                //     );
-                //     return;
-                // }
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    $bot->sendMessage(
+                        text: "There was an error decoding the buttons JSON.",
+                        chat_id: $chat_id
+                    );
+                    return;
+                }
 
                 if (is_array($buttons)) {
                     $keyboard = InlineKeyboardMarkup::make();
